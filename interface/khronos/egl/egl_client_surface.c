@@ -401,11 +401,14 @@ EGL_SURFACE_T *egl_surface_create(
 #ifdef BUILD_WAYLAND
    if (type == WINDOW && wl_display) {
       surface->wl_egl_window = (struct wl_egl_window*)win;
+      surface->front_wl_buffer = NULL;
       surface->back_wl_buffer = allocate_wl_buffer(
             surface->wl_egl_window, color);
       resource = surface->back_wl_buffer->resource;
    } else {
       surface->wl_egl_window = NULL;
+      surface->front_wl_buffer = NULL;
+      surface->back_wl_buffer = NULL;
       resource = DISPMANX_NO_HANDLE;
    }
 #endif
@@ -690,11 +693,13 @@ void egl_surface_free(EGL_SURFACE_T *surface)
       if (surface->back_wl_buffer) {
          wl_buffer_destroy(surface->back_wl_buffer->wl_buffer);
          free(surface->back_wl_buffer);
+         surface->back_wl_buffer = 0;
       }
 
       if (surface->front_wl_buffer) {
          wl_buffer_destroy(surface->front_wl_buffer->wl_buffer);
          free(surface->front_wl_buffer);
+         surface->front_wl_buffer = 0;
       }
 #endif
    }
