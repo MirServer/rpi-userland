@@ -98,6 +98,12 @@ typedef struct android_native_window_t* EGLNativeWindowType;
 typedef struct egl_native_pixmap_t*     EGLNativePixmapType;
 typedef void *EGLNativeDisplayType;
 
+#elif defined(WL_EGL_PLATFORM)
+
+typedef struct wl_display     *EGLNativeDisplayType;
+typedef struct wl_egl_pixmap  *EGLNativePixmapType;
+typedef struct wl_egl_window  *EGLNativeWindowType;
+
 #else
 
 typedef void *EGLNativeDisplayType;
