@@ -333,7 +333,7 @@ typedef struct
 void *platform_wfc_bounce_thread(void *param);
 
 #ifdef BUILD_WAYLAND
-struct wl_display *khrn_platform_get_wl_display();
+struct wl_display *khrn_platform_get_wl_display(EGLDisplay dpy);
 #endif
 
 #endif // KHRN_CLIENT_PLATFORM_H

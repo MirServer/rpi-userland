@@ -303,6 +303,7 @@ bool egl_surface_check_attribs(
 */
 
 EGL_SURFACE_T *egl_surface_create(
+   EGLDisplay dpy,
    EGLSurface name,
    EGL_SURFACE_TYPE_T type,
    EGL_SURFACE_COLORSPACE_T colorspace,
@@ -331,8 +332,11 @@ EGL_SURFACE_T *egl_surface_create(
    EGLint   config_stencil_bits;
    CLIENT_THREAD_STATE_T *thread = CLIENT_GET_THREAD_STATE();
 #ifdef BUILD_WAYLAND
-   struct wl_display *wl_display = khrn_platform_get_wl_display();
+   struct wl_display *wl_display = khrn_platform_get_wl_display(dpy);
    DISPMANX_RESOURCE_HANDLE_T resource;
+#else
+  /* Silence unused variable warning */
+  (void)dpy;
 #endif
 
    EGL_SURFACE_T *surface = egl_surface_pool_alloc();
@@ -403,7 +407,7 @@ EGL_SURFACE_T *egl_surface_create(
       surface->wl_egl_window = (struct wl_egl_window*)win;
       surface->front_wl_buffer = NULL;
       surface->back_wl_buffer = allocate_wl_buffer(
-            surface->wl_egl_window, color);
+           dpy, surface->wl_egl_window, color);
       resource = surface->back_wl_buffer->resource;
    } else {
       surface->wl_egl_window = NULL;

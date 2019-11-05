@@ -167,13 +167,46 @@ no error condition is raised in this case.
    -
 */
 
+static struct WlEGLDisplay *find_display(struct WlEGLDisplay *head, struct wl_display *wl_display)
+{
+   for (struct WlEGLDisplay *item = head; item; item = item->next) {
+      if (item->wl_display == wl_display)
+         return item;
+   }
+   return NULL;
+}
+
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
 {
-   CLIENT_THREAD_STATE_T *thread = CLIENT_GET_CHECK_THREAD_STATE();
-   if (thread)
-      thread->error = EGL_SUCCESS;
+   EGLDisplay dpy = display_id == EGL_DEFAULT_DISPLAY ? EGL_DEFAULT_DISPLAY : EGL_NO_DISPLAY;
 
-   return khrn_platform_set_display_id(display_id);
+#ifdef BUILD_WAYLAND
+   if (display_is_wayland(display_id)) {
+      CLIENT_LOCK();
+      CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
+
+      struct WlEGLDisplay *wl_egl_display = find_display(process->first_display, display_id);
+      if (!wl_egl_display) {
+         wl_egl_display = calloc(1, sizeof(*wl_egl_display));
+         wl_egl_display->wl_display = (struct wl_display*)display_id;
+         wl_egl_display->next = process->first_display;
+         process->first_display = wl_egl_display;
+      }
+      CLIENT_UNLOCK();
+
+      dpy = wl_egl_display;
+   }
+#endif
+
+   CLIENT_THREAD_STATE_T *thread = CLIENT_GET_CHECK_THREAD_STATE();
+   if (thread) {
+      if (dpy != EGL_NO_DISPLAY)
+         thread->error = EGL_SUCCESS;
+      else
+         thread->error = EGL_BAD_PARAMETER;
+   }
+
+   return dpy;
 }
 
 

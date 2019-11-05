@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "interface/khronos/common/khrn_client.h"
 
-int init_process_wayland(CLIENT_PROCESS_STATE_T *process);
-int do_wl_roundtrip();
+int init_display_wayland(EGLDisplay dpy);
+void fini_display_wayland(EGLDisplay dpy);
 
-struct wl_dispmanx_client_buffer *allocate_wl_buffer(struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color);
+struct wl_dispmanx_client_buffer *allocate_wl_buffer(struct WlEGLDisplay *display, struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color);

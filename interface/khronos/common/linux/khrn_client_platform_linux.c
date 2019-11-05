@@ -470,35 +470,27 @@ EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id)
 }
 #else
 
-#ifdef BUILD_WAYLAND
-static struct wl_display *hacky_display = NULL;
-#endif
-
 EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id)
 {
    if (display_id == EGL_DEFAULT_DISPLAY)
       return (EGLDisplay)1;
-   else {
 #ifdef BUILD_WAYLAND
-      void *first_pointer = *(void **) display_id;
-
-      /* wl_display is a wl_proxy, which is a wl_object.
-       * wl_object's first element points to the interfacetype. */
-      if (first_pointer == &wl_display_interface) {
-         hacky_display = (struct wl_display*)display_id;
-         return (EGLDisplay)1;
-      } else
+   if (display_is_wayland(display_id))
+      return (EGLDisplay)display_id;
 #endif
-         return EGL_NO_DISPLAY;
-   }
+   return EGL_NO_DISPLAY;
 }
 
 #ifdef BUILD_WAYLAND
-struct wl_display *khrn_platform_get_wl_display()
+struct wl_display* khrn_platform_get_wl_display(EGLDisplay dpy)
 {
-   return hacky_display;
+   if (display_is_wayland(dpy))
+      return (struct wl_display*)dpy;
+
+   return NULL;
 }
 #endif
+
 #endif
 
 #ifdef WANT_X
@@ -834,7 +826,7 @@ void platform_get_dimensions(EGLDisplay dpy, EGLNativeWindowType win,
       uint32_t *width, uint32_t *height, uint32_t *swapchain_count)
 {
 #ifdef BUILD_WAYLAND
-   if(khrn_platform_get_wl_display()) {
+   if(khrn_platform_get_wl_display(dpy)) {
       struct wl_egl_window *wl_egl_window = (struct wl_egl_window*)win;
       *width = wl_egl_window->width;
       *height = wl_egl_window->height;
@@ -891,7 +883,7 @@ static DISPMANX_ELEMENT_HANDLE_T create_dummy_element()
 uint32_t platform_get_handle(EGLDisplay dpy, EGLNativeWindowType win)
 {
 #ifdef BUILD_WAYLAND
-   if(khrn_platform_get_wl_display()) {
+   if(khrn_platform_get_wl_display(dpy)) {
       struct wl_egl_window *wl_egl_window = (struct wl_egl_window*)win;
 
       if (wl_egl_window->dummy_element == PLATFORM_WIN_NONE)

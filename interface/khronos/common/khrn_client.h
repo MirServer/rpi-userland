@@ -178,6 +178,21 @@ static INLINE CLIENT_THREAD_STATE_T *CLIENT_GET_CHECK_THREAD_STATE(void)
    - EGL counters
 */
 
+#ifdef BUILD_WAYLAND
+struct WlEGLDisplay {
+   /* Client-side Wayland state */
+   struct wl_display *wl_display;
+   struct wl_registry *wl_registry;
+   struct wl_dispmanx *wl_dispmanx;
+   struct wl_event_queue *wl_queue;
+
+   /* Compositor-side Wayland state */
+   struct wl_global *wl_global;
+
+   struct WlEGLDisplay *next;
+};
+#endif
+
 struct CLIENT_PROCESS_STATE {
 #ifdef RPC_LIBRARY
    /*
@@ -204,6 +219,18 @@ struct CLIENT_PROCESS_STATE {
    Only client_process_state_init/client_process_state_term modify this value
    */
    bool inited;
+
+   uint32_t live_displays;
+
+#ifdef BUILD_WAYLAND
+   /*
+   displays
+
+   A vector of WlEGLDisplay*s
+
+   */
+   struct WlEGLDisplay *first_display;
+#endif
 
    /*
    contexts
@@ -312,18 +339,13 @@ struct CLIENT_PROCESS_STATE {
 #endif
 
 #ifdef BUILD_WAYLAND
-   /* Client-side Wayland state */
-   struct wl_registry *wl_registry;
-   struct wl_dispmanx *wl_dispmanx;
-   struct wl_event_queue *wl_queue;
-
-   /* Compositor-side Wayland state */
-   struct wl_global *wl_global;
+  /* Compositor-side Wayland state */
+  struct wl_global *wl_global;
 #endif
 };
 
-extern bool client_process_state_init(CLIENT_PROCESS_STATE_T *process);
-extern void client_process_state_term(CLIENT_PROCESS_STATE_T *process);
+extern bool client_process_state_init(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy);
+extern void client_process_state_term(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy);
 
 extern CLIENT_PROCESS_STATE_T client_process_state;
 
@@ -355,6 +377,10 @@ CLIENT_PROCESS_STATE_T *client_egl_get_process_state(CLIENT_THREAD_STATE_T *thre
 EGL_CONTEXT_T *client_egl_get_context(CLIENT_THREAD_STATE_T *thread, CLIENT_PROCESS_STATE_T *process, EGLContext ctx);
 EGL_SURFACE_T *client_egl_get_surface(CLIENT_THREAD_STATE_T *thread, CLIENT_PROCESS_STATE_T *process, EGLSurface surf);
 EGL_SURFACE_T *client_egl_get_locked_surface(CLIENT_THREAD_STATE_T *thread, CLIENT_PROCESS_STATE_T *process, EGLSurface surf);
+
+#ifdef BUILD_WAYLAND
+bool display_is_wayland(EGLNativeDisplayType dpy);
+#endif
 
 EGLNativeWindowType client_egl_get_window(CLIENT_THREAD_STATE_T *thread, CLIENT_PROCESS_STATE_T *process, EGLNativeWindowType window);
 /*

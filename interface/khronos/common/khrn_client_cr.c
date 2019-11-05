@@ -125,7 +125,30 @@ static void callback_destroy_surface(KHRN_POINTER_MAP_T *map, uint32_t key, void
 
 CLIENT_PROCESS_STATE_T *client_egl_get_process_state(CLIENT_THREAD_STATE_T *thread, EGLDisplay dpy, EGLBoolean check_inited)
 {
-   if ((size_t)dpy == 1) {
+#ifdef BUILD_WAYLAND
+   CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
+
+   if (dpy != EGL_DEFAULT_DISPLAY) {
+      for (struct WlEGLDisplay *item = process->first_display; item; item = item->next) {
+         if (item == dpy) {
+            if (check_inited && !item->wl_dispmanx) {
+               thread->error = EGL_NOT_INITIALIZED;
+               return NULL;
+            }
+            return process;
+         }
+      }
+      thread->error = EGL_BAD_DISPLAY;
+      return NULL;
+   } else { /* EGL_DEFAULT_DISPLAY */
+      if (check_inited && !process->inited) {
+         thread->error = EGL_NOT_INITIALIZED;
+         return NULL;
+      } else
+         return process;
+   }
+#else
+   if (dpy == EGL_DEFAULT_DISPLAY) {
       CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
 
       if (check_inited && !process->inited) {
@@ -137,4 +160,5 @@ CLIENT_PROCESS_STATE_T *client_egl_get_process_state(CLIENT_THREAD_STATE_T *thre
       thread->error = EGL_BAD_DISPLAY;
       return NULL;
    }
+#endif
 }

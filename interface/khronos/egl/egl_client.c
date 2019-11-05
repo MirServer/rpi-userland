@@ -229,7 +229,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLin
       CLIENT_PROCESS_STATE_T *process = client_egl_get_process_state(thread, dpy, EGL_FALSE);
 
       if (process) {
-         if (!client_process_state_init(process))
+         if (!client_process_state_init(process, dpy))
          {
             thread->error = EGL_NOT_INITIALIZED;
             result = EGL_FALSE;
@@ -327,7 +327,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy)
          CLIENT_PROCESS_STATE_T *process = client_egl_get_process_state(thread, dpy, EGL_FALSE);
 
          if (process) {
-            client_process_state_term(process);
+            client_process_state_term(process, dpy);
 
             thread->error = EGL_SUCCESS;
             result = EGL_TRUE;
@@ -360,7 +360,7 @@ name may be one of EGL CLIENT APIS, EGL EXTENSIONS, EGL VENDOR, or
 EGL VERSION.
 The EGL CLIENT APIS string describes which client rendering APIs are supported.
 It is zero-terminated and contains a space-separated list of API names,
-which must include at least one of ‘‘OpenGL ES’’ or ‘‘OpenVG’’.
+which must include at least one of ï¿½ï¿½OpenGL ESï¿½ï¿½ or ï¿½ï¿½OpenVGï¿½ï¿½.
 Version 1.3 - December 4, 2006
 3.4. CONFIGURATION MANAGEMENT 13
 The EGL EXTENSIONS string describes which EGL extensions are supported
@@ -633,6 +633,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig c
                result = EGL_NO_SURFACE;
             } else {
                surface = egl_surface_create(
+                                dpy,
                                 (EGLSurface)(size_t)process->next_surface,
                                 WINDOW,
                                 linear ? LINEAR : SRGB,
@@ -882,6 +883,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
             result = EGL_NO_SURFACE;
          } else {
             EGL_SURFACE_T *surface = egl_surface_create(
+                             dpy,
                              (EGLSurface)(size_t)process->next_surface,
                              PBUFFER,
                              linear ? LINEAR : SRGB,
@@ -1024,6 +1026,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig c
                      result = EGL_NO_SURFACE;
                   } else {
                      surface = egl_surface_create(
+                                   dpy,
                                    (EGLSurface)(size_t)process->next_surface,
                                    PIXMAP,
                                    linear ? LINEAR : SRGB,
@@ -2241,7 +2244,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
    CLIENT_PROCESS_STATE_T *process;
    EGLBoolean result;
 #ifdef BUILD_WAYLAND
-   struct wl_display *wl_display = khrn_platform_get_wl_display();
+   struct wl_display *wl_display = khrn_platform_get_wl_display(dpy);
 #endif
 
    vcos_log_trace("eglSwapBuffers start. dpy=%d. surf=%d.", (int)dpy, (int)surf);
@@ -2315,6 +2318,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
 
 #ifdef BUILD_WAYLAND
                if (wl_display) {
+                  struct WlEGLDisplay *wl_egl_display = dpy;
                   struct wl_egl_window *wl_egl_window = surface->wl_egl_window;
                   struct wl_dispmanx_client_buffer *buffer_temp;
                   uint32_t configid;
@@ -2329,7 +2333,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
                   color = egl_config_get_color_format(configid);
 
                   if (surface->back_wl_buffer == NULL)
-                     surface->back_wl_buffer = allocate_wl_buffer(wl_egl_window, color);
+                     surface->back_wl_buffer = allocate_wl_buffer(wl_egl_display, wl_egl_window, color);
                   else if (surface->back_wl_buffer->width != width ||
                            surface->back_wl_buffer->height != height) {
 
@@ -2338,7 +2342,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
                      wl_buffer_destroy(surface->back_wl_buffer->wl_buffer);
                      free(surface->back_wl_buffer);
 
-                     buffer = allocate_wl_buffer(wl_egl_window, color);
+                     buffer = allocate_wl_buffer(wl_egl_display, wl_egl_window, color);
                      surface->back_wl_buffer = buffer;
                   }
 
@@ -2362,7 +2366,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
                   wl_surface_commit(wl_egl_window->wl_surface);
 
                   while(ret != -1 && surface->back_wl_buffer->in_use)
-                     ret = wl_display_dispatch_queue(wl_display, process->wl_queue);
+                     ret = wl_display_dispatch_queue(wl_display, wl_egl_display->wl_queue);
                } else
 #endif
                RPC_CALL6(eglIntSwapBuffers_impl,

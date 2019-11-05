@@ -341,6 +341,7 @@ extern bool egl_surface_check_attribs(
 struct CLIENT_PROCESS_STATE;
 
 extern EGL_SURFACE_T *egl_surface_create(
+   EGLDisplay dpy,
    EGLSurface name,
    EGL_SURFACE_TYPE_T type,
    EGL_SURFACE_COLORSPACE_T colorspace,

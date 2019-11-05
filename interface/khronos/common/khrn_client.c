@@ -143,7 +143,7 @@ void client_try_unload_server(CLIENT_PROCESS_STATE_T *process)
    -
 */
 
-bool client_process_state_init(CLIENT_PROCESS_STATE_T *process)
+bool client_process_state_init(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 {
    if (!process->inited) {
 #ifdef BUILD_WAYLAND
@@ -201,16 +201,15 @@ bool client_process_state_init(CLIENT_PROCESS_STATE_T *process)
          process->connected = true;
       }
 #endif
-
-#ifdef BUILD_WAYLAND
-      struct wl_display *wl_display = khrn_platform_get_wl_display();
-      if (wl_display)
-         if (!init_process_wayland(process))
-            return false;
-#endif
-
       process->inited = true;
    }
+
+#ifdef BUILD_WAYLAND
+   struct wl_display *wl_display = khrn_platform_get_wl_display(dpy);
+   if (wl_display)
+      if (!init_display_wayland(dpy))
+         return false;
+#endif
 
 #ifndef ABSTRACT_PLATFORM
 #if defined(ANDROID) && !defined (ANDROID_HWCOMPOSER)
@@ -219,6 +218,8 @@ bool client_process_state_init(CLIENT_PROCESS_STATE_T *process)
    egl_config_install_configs(0); // RSO configs
 #endif
 #endif
+
+   process->live_displays++;
 
    return true;
 }
@@ -251,9 +252,13 @@ bool client_process_state_init(CLIENT_PROCESS_STATE_T *process)
    -
 */
 
-void client_process_state_term(CLIENT_PROCESS_STATE_T *process)
+void client_process_state_term(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 {
-   if (process->inited) {
+   process->live_displays--;
+   if (dpy != EGL_DEFAULT_DISPLAY) {
+      fini_display_wayland(dpy);
+   }
+   if (process->inited && (process->live_displays == 0)) {
       khrn_pointer_map_iterate(&process->contexts, callback_destroy_context, NULL);
       khrn_pointer_map_term(&process->contexts);
 
@@ -285,10 +290,15 @@ void client_process_state_term(CLIENT_PROCESS_STATE_T *process)
 
 CLIENT_PROCESS_STATE_T client_process_state = {
 #ifdef RPC_LIBRARY
-   false, /* not connected */
+    false, /* not connected */
 #endif
-   0, /* nothing current */
-   false}; /* not inited */
+    0, /* nothing current */
+    false, /* not inited */
+    0, /* number of initialised EGLDisplays */
+#ifdef BUILD_WAYLAND
+    NULL /* no Wayland displays */
+#endif
+};
 
 void client_thread_state_init(CLIENT_THREAD_STATE_T *state)
 {
@@ -365,6 +375,20 @@ EGL_SURFACE_T *client_egl_get_locked_surface(CLIENT_THREAD_STATE_T *thread, CLIE
 
    return surface;
 }
+
+#ifdef BUILD_WAYLAND
+bool display_is_wayland(EGLDisplay dpy)
+{
+   if (dpy == EGL_DEFAULT_DISPLAY)
+      return false;
+
+   /* TODO: should really check if dpy is dereferencable first */
+   void *first_pointer = *(void **)dpy;
+   /* wl_display is a wl_proxy, which is a wl_object.
+    * wl_object's first element points to the interfacetype. */
+  return first_pointer == &wl_display_interface;
+}
+#endif
 
 /*
  * just return if we've seen window before 

@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define VCOS_LOG_CATEGORY (&khrn_client_log)
 
+#include <wayland-server-core.h>
 #include "interface/khronos/common/linux/khrn_wayland.h"
 #include "interface/khronos/wayland-dispmanx-client-protocol.h"
 #include "interface/khronos/wayland-egl/wayland-egl-priv.h"
@@ -68,17 +69,16 @@ static const struct wl_callback_listener sync_listener = {
 };
 
 static int
-roundtrip(CLIENT_PROCESS_STATE_T *process)
+roundtrip(struct WlEGLDisplay *display)
 {
-   struct wl_display *wl_display = khrn_platform_get_wl_display();
    struct wl_callback *callback;
    int done = 0, ret = 0;
 
-   callback = wl_display_sync(wl_display);
+   callback = wl_display_sync(display->wl_display);
    wl_callback_add_listener(callback, &sync_listener, &done);
-   wl_proxy_set_queue((struct wl_proxy *) callback, process->wl_queue);
+   wl_proxy_set_queue((struct wl_proxy *) callback, display->wl_queue);
    while (ret != -1 && !done)
-      ret = wl_display_dispatch_queue(wl_display, process->wl_queue);
+      ret = wl_display_dispatch_queue(display->wl_display, display->wl_queue);
 
    if (!done)
       wl_callback_destroy(callback);
@@ -86,27 +86,20 @@ roundtrip(CLIENT_PROCESS_STATE_T *process)
    return ret;
 }
 
-int do_wl_roundtrip()
-{
-   CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
-   return roundtrip(process);
-}
-
 static void
 registry_handle_global(void *data, struct wl_registry *registry,
                        uint32_t name, const char *interface, uint32_t version)
 {
-   struct wl_display *wl_display = khrn_platform_get_wl_display();
-   CLIENT_PROCESS_STATE_T *process = (CLIENT_PROCESS_STATE_T *)data;
+   struct WlEGLDisplay *display = (struct WlEGLDisplay *)data;
 
    if (strcmp(interface, "wl_dispmanx") == 0) {
-      process->wl_dispmanx = wl_registry_bind(registry, name,
+      display->wl_dispmanx = wl_registry_bind(registry, name,
 	       &wl_dispmanx_interface, 1);
 
-      wl_proxy_set_queue((struct wl_proxy *) process->wl_dispmanx,
-                         process->wl_queue);
-      wl_dispmanx_add_listener(process->wl_dispmanx, &dispmanx_listener, wl_display);
-      roundtrip(process);
+      wl_proxy_set_queue((struct wl_proxy *) display->wl_dispmanx,
+                         display->wl_queue);
+      wl_dispmanx_add_listener(display->wl_dispmanx, &dispmanx_listener, display->wl_display);
+      roundtrip(display);
    }
 }
 
@@ -122,34 +115,52 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 int
-init_process_wayland(CLIENT_PROCESS_STATE_T *process)
+init_display_wayland(EGLDisplay dpy)
 {
-    struct wl_display *wl_display = khrn_platform_get_wl_display();
+    struct WlEGLDisplay *display = dpy;
 
-    process->wl_queue = wl_display_create_queue(wl_display);
-    if (!process->wl_queue) {
+    display->wl_queue = wl_display_create_queue(display->wl_display);
+    if (!display->wl_queue) {
         vcos_log_error("wl_display_create_queue failed\n");
         return false;
     }
-    wl_display_dispatch_pending(wl_display);
+    wl_display_dispatch_pending(display->wl_display);
 
-    process->wl_registry = wl_display_get_registry(wl_display);
-    if (!process->wl_registry) {
+    display->wl_registry = wl_display_get_registry(display->wl_display);
+    if (!display->wl_registry) {
         vcos_log_error("wl_display_get_registry failed\n");
         return false;
     }
 
-    wl_proxy_set_queue((struct wl_proxy *) process->wl_registry,
-    process->wl_queue);
+    wl_proxy_set_queue((struct wl_proxy *) display->wl_registry,
+    display->wl_queue);
 
-    wl_registry_add_listener(process->wl_registry, &registry_listener, process);
+    wl_registry_add_listener(display->wl_registry, &registry_listener, display);
 
-    if (roundtrip(process) < 0 || process->wl_dispmanx == NULL) {
+    if (roundtrip(display) < 0 || display->wl_dispmanx == NULL) {
         vcos_log_error("failed to get wl_dispmanx\n");
         return false;
     }
 
     return true;
+}
+
+void fini_display_wayland(EGLDisplay dpy)
+{
+   struct WlEGLDisplay *display = dpy;
+
+   wl_event_queue_destroy(display->wl_queue);
+   display->wl_queue = NULL;
+
+   wl_registry_destroy(display->wl_registry);
+   display->wl_registry = NULL;
+
+   if (display->wl_global)
+      wl_global_destroy(display->wl_global);
+   display->wl_global = NULL;
+
+   wl_proxy_destroy((struct wl_proxy *)display->wl_dispmanx);
+   display->wl_dispmanx = NULL;
 }
 
 #ifndef ALIGN_UP
@@ -167,9 +178,8 @@ static const struct wl_buffer_listener buffer_listener = {
 };
 
 struct wl_dispmanx_client_buffer *
-allocate_wl_buffer(struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color)
+allocate_wl_buffer(struct WlEGLDisplay *display, struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color)
 {
-   CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
    struct wl_dispmanx_client_buffer *wl_dispmanx_client_buffer;
    struct wl_buffer *wl_buffer;
    uint32_t stride = ALIGN_UP(window->width * 4, 16);
@@ -192,7 +202,7 @@ allocate_wl_buffer(struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color)
       return NULL;
    }
 
-   wl_buffer = wl_dispmanx_create_buffer(process->wl_dispmanx, window->width,
+   wl_buffer = wl_dispmanx_create_buffer(display->wl_dispmanx, window->width,
                                          window->height, stride, buffer_height,
                                          color_format);
    if (wl_buffer == NULL)
@@ -205,11 +215,11 @@ allocate_wl_buffer(struct wl_egl_window *window, KHRN_IMAGE_FORMAT_T color)
    wl_dispmanx_client_buffer->width = window->width;
    wl_dispmanx_client_buffer->height = window->height;
 
-   wl_proxy_set_queue((struct wl_proxy *) wl_buffer, process->wl_queue);
+   wl_proxy_set_queue((struct wl_proxy *) wl_buffer, display->wl_queue);
    wl_buffer_add_listener(wl_buffer, &buffer_listener, wl_dispmanx_client_buffer);
 
    while (ret != -1 && wl_dispmanx_client_buffer->pending_allocation)
-      ret = do_wl_roundtrip();
+      ret = roundtrip(display);
 
    return wl_dispmanx_client_buffer;
 }
