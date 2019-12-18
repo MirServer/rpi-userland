@@ -116,6 +116,13 @@ add_library(GLESv2_static STATIC ${GLES_SOURCE})
 add_library(khrn_static STATIC
    ${EGL_SOURCE} ${GLES_SOURCE} ${VG_SOURCE} ${WFC_SOURCE} ${CLIENT_SOURCE})
 
+if (BUILD_WAYLAND)
+# TODO this should really be expressed better
+    add_dependencies(EGL vchostif)
+    add_dependencies(EGL_static vchostif)
+    add_dependencies(khrn_static vchostif)
+endif()
+
 if(KHRONOS_HAVE_VCSM)
 include_directories (../../host_applications/linux/libs/sm )
 set(VCSM_LIBS vcsm)
