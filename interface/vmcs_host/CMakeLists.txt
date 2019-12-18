@@ -23,7 +23,12 @@ wayland_add_protocol_server(
     ../../interface/wayland/dispmanx.xml
     dispmanx
 )
-set(VCHOSTIF_SOURCE ${VCHOSTIF_SOURCE} wayland-dispmanx-server-protocol.h)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/wayland-dispmanx-server-protocol.h
+    DESTINATION
+        include/interface/vmcs_host)
 endif ()
 
 add_library(vchostif ${VCHOSTIF_SOURCE})
