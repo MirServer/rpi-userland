@@ -41,11 +41,7 @@ parts:
       snapcraftctl set-version $(git describe --always)
     override-prime: |
       snapcraftctl prime
-      echo "Hello from override-prime: ${SNAPCRAFT_PART_STAGE}"
-      ls ${SNAPCRAFT_PART_STAGE}
       for PC in $(find . -name "*.pc")
       do
-        echo $PC
         sed -i 's#prefix=${SNAPCRAFT_STAGE}#prefix=/snap/${SNAPCRAFT_PROJECT_NAME}/current#' $PC
-        cat $PC
       done
