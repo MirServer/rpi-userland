@@ -27,6 +27,8 @@ parts:
       - gcc-arm-linux-gnueabihf:amd64
       - git:amd64
       - pkg-config:amd64
+    build-environment:
+      - PKG_CONFIG_PATH: /usr/lib/arm-linux-gnueabihf/pkgconfig
     override-pull: |
       dpkg --add-architecture armhf
       echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic main restricted universe multiverse" > /etc/apt/sources.list.d/armhf.list
