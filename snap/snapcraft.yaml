@@ -1,0 +1,48 @@
+name: rpi-userland # you probably want to 'snapcraft register <name>'
+base: core18 # the base snap is the execution environment for this snap
+adopt-info: userland
+summary: Broadcom userland libraries for Raspberry Pi
+description: |
+  This is my-snap's description. You have a paragraph or two to tell the
+  most important story about your snap. Keep it under 100 words though,
+  we live in tweetspace and your description wants to look good in the snap
+  store.
+architectures:
+  - build-on: amd64
+    run-on: all # It only builds armhf binaries, but they're useful for cross-compiling
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+parts:
+  userland:
+    plugin: cmake
+    source: .
+    configflags:
+      - -DCMAKE_TOOLCHAIN_FILE=${SNAPCRAFT_PART_SRC}/makefiles/cmake/toolchains/arm-linux-gnueabihf.cmake
+      - -DBUILD_WAYLAND=ON
+      - -DCMAKE_BUILD_TYPE=Release
+    build-packages:
+      - g++-arm-linux-gnueabihf
+      - gcc-arm-linux-gnueabihf
+      - git
+    override-pull: |
+      dpkg --add-architecture armhf
+      echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic main restricted universe multiverse" > /etc/apt/sources.list.d/armhf.list
+      echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
+      echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
+      echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
+      apt update || true
+      apt install --yes pkg-config:armhf libwayland-dev:armhf
+      snapcraftctl pull
+      snapcraftctl set-version $(git describe --always)
+    override-prime: |
+      snapcraftctl prime
+      echo "Hello from override-prime: ${SNAPCRAFT_PART_STAGE}"
+      ls ${SNAPCRAFT_PART_STAGE}
+      for PC in $(find . -name "*.pc")
+      do
+        echo $PC
+        sed -i 's#prefix=${SNAPCRAFT_STAGE}#prefix=/snap/${SNAPCRAFT_PROJECT_NAME}/current#' $PC
+        cat $PC
+      done
