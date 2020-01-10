@@ -23,17 +23,18 @@ parts:
       - -DBUILD_WAYLAND=ON
       - -DCMAKE_BUILD_TYPE=Release
     build-packages:
-      - g++-arm-linux-gnueabihf
-      - gcc-arm-linux-gnueabihf
-      - git
+      - g++-arm-linux-gnueabihf:amd64
+      - gcc-arm-linux-gnueabihf:amd64
+      - git:amd64
+      - pkg-config:amd64
     override-pull: |
       dpkg --add-architecture armhf
       echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic main restricted universe multiverse" > /etc/apt/sources.list.d/armhf.list
       echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
       echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
       echo "deb [arch=arm64,armhf,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list.d/armhf.list
-      apt update || true
-      apt install --yes pkg-config:armhf libwayland-dev:armhf
+      apt-get update || true
+      apt-get install --yes libwayland-dev:armhf libwayland-bin:amd64
       snapcraftctl pull
       snapcraftctl set-version $(git describe --always)
     override-prime: |
