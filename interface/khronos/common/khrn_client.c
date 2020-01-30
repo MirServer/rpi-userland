@@ -255,7 +255,7 @@ bool client_process_state_init(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 void client_process_state_term(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 {
    process->live_displays--;
-   if (dpy != EGL_DEFAULT_DISPLAY) {
+   if (display_is_wayland(dpy)) {
       fini_display_wayland(dpy);
    }
    if (process->inited && (process->live_displays == 0)) {
@@ -379,7 +379,7 @@ EGL_SURFACE_T *client_egl_get_locked_surface(CLIENT_THREAD_STATE_T *thread, CLIE
 #ifdef BUILD_WAYLAND
 bool display_is_wayland(EGLDisplay dpy)
 {
-   if (dpy == EGL_DEFAULT_DISPLAY)
+   if (dpy == (EGLDisplay)0x1)
       return false;
 
    /* TODO: should really check if dpy is dereferencable first */

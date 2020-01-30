@@ -128,7 +128,7 @@ CLIENT_PROCESS_STATE_T *client_egl_get_process_state(CLIENT_THREAD_STATE_T *thre
 #ifdef BUILD_WAYLAND
    CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
 
-   if (dpy != EGL_DEFAULT_DISPLAY) {
+   if (dpy != (EGLDisplay)0x1) {
       for (struct WlEGLDisplay *item = process->first_display; item; item = item->next) {
          if (item == dpy) {
             if (check_inited && !item->wl_dispmanx) {
@@ -148,7 +148,7 @@ CLIENT_PROCESS_STATE_T *client_egl_get_process_state(CLIENT_THREAD_STATE_T *thre
          return process;
    }
 #else
-   if (dpy == EGL_DEFAULT_DISPLAY) {
+   if (dpy == (EGLDisplay)0x1) {
       CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
 
       if (check_inited && !process->inited) {

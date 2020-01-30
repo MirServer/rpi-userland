@@ -178,7 +178,7 @@ static struct WlEGLDisplay *find_display(struct WlEGLDisplay *head, struct wl_di
 
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
 {
-   EGLDisplay dpy = display_id == EGL_DEFAULT_DISPLAY ? EGL_DEFAULT_DISPLAY : EGL_NO_DISPLAY;
+   EGLDisplay dpy = display_id == EGL_DEFAULT_DISPLAY ? (EGLDisplay)0x1 : EGL_NO_DISPLAY;
 
 #ifdef BUILD_WAYLAND
    if (display_is_wayland(display_id)) {
