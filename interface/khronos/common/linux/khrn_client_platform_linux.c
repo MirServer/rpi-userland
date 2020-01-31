@@ -484,8 +484,8 @@ EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id)
 #ifdef BUILD_WAYLAND
 struct wl_display* khrn_platform_get_wl_display(EGLDisplay dpy)
 {
-   if (display_is_wayland(dpy))
-      return (struct wl_display*)dpy;
+   if (dpy != (EGLDisplay)0x1)
+      return ((struct WlEGLDisplay*)dpy)->wl_display;
 
    return NULL;
 }

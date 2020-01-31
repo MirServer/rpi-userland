@@ -255,7 +255,7 @@ bool client_process_state_init(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 void client_process_state_term(CLIENT_PROCESS_STATE_T *process, EGLDisplay dpy)
 {
    process->live_displays--;
-   if (display_is_wayland(dpy)) {
+   if (khrn_platform_get_wl_display(dpy)) {
       fini_display_wayland(dpy);
    }
    if (process->inited && (process->live_displays == 0)) {
@@ -375,20 +375,6 @@ EGL_SURFACE_T *client_egl_get_locked_surface(CLIENT_THREAD_STATE_T *thread, CLIE
 
    return surface;
 }
-
-#ifdef BUILD_WAYLAND
-bool display_is_wayland(EGLDisplay dpy)
-{
-   if (dpy == (EGLDisplay)0x1)
-      return false;
-
-   /* TODO: should really check if dpy is dereferencable first */
-   void *first_pointer = *(void **)dpy;
-   /* wl_display is a wl_proxy, which is a wl_object.
-    * wl_object's first element points to the interfacetype. */
-  return first_pointer == &wl_display_interface;
-}
-#endif
 
 /*
  * just return if we've seen window before 
