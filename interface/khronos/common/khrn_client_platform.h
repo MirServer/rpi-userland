@@ -308,8 +308,6 @@ extern void egl_gce_win_change_image(void);
 }
 #endif
 
-extern EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id);
-
 extern uint32_t khrn_platform_get_window_position(EGLNativeWindowType win);
 
 extern void khrn_platform_release_pixmap_info(EGLNativePixmapType pixmap, KHRN_IMAGE_WRAP_T *image);

@@ -470,17 +470,6 @@ EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id)
 }
 #else
 
-EGLDisplay khrn_platform_set_display_id(EGLNativeDisplayType display_id)
-{
-   if (display_id == EGL_DEFAULT_DISPLAY)
-      return (EGLDisplay)1;
-#ifdef BUILD_WAYLAND
-   if (display_is_wayland(display_id))
-      return (EGLDisplay)display_id;
-#endif
-   return EGL_NO_DISPLAY;
-}
-
 #ifdef BUILD_WAYLAND
 struct wl_display* khrn_platform_get_wl_display(EGLDisplay dpy)
 {
