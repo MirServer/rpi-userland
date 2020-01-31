@@ -181,7 +181,7 @@ EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
    EGLDisplay dpy = display_id == EGL_DEFAULT_DISPLAY ? (EGLDisplay)0x1 : EGL_NO_DISPLAY;
 
 #ifdef BUILD_WAYLAND
-   if (display_is_wayland(display_id)) {
+   if (dpy == EGL_NO_DISPLAY) {
       CLIENT_LOCK();
       CLIENT_PROCESS_STATE_T *process = CLIENT_GET_PROCESS_STATE();
 
