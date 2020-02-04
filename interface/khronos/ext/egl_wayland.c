@@ -178,6 +178,7 @@ eglBindWaylandDisplayWL(EGLDisplay dpy, struct wl_display *display)
    if (process->wl_global == NULL)
       goto error;
 
+   CLIENT_UNLOCK();
    return EGL_TRUE;
 
 error:
