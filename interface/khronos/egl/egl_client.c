@@ -2366,7 +2366,13 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surf)
                   wl_surface_commit(wl_egl_window->wl_surface);
 
                   while(ret != -1 && surface->back_wl_buffer->in_use)
+                  {
+                     /* Need to unlock before calling wl_display_dispatch_queue, which may block */
+                     CLIENT_UNLOCK();
+                     /* TODO: We should have one queue per thread doing swapbuffers, really */
                      ret = wl_display_dispatch_queue(wl_display, wl_egl_display->wl_queue);
+                     CLIENT_LOCK();
+                  }
                } else
 #endif
                RPC_CALL6(eglIntSwapBuffers_impl,
