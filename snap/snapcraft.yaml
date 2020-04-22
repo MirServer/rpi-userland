@@ -45,6 +45,7 @@ parts:
       do
         sed -i 's#prefix=${SNAPCRAFT_STAGE}#prefix=/snap/${SNAPCRAFT_PROJECT_NAME}/current#' $PC
       done
-      # Fix up libGLES & libEGL symlinks
-      ln -s libEGL.so ${SNAPCRAFT_PRIME}/opt/vc/lib/libEGL.so.1
-      ln -s libGLESv2.so ${SNAPCRAFT_PRIME}/opt/vc/lib/libGLESv2.so.2
+      # Fix up libGLES, libEGL, and libwayland-egl symlinks
+      ln -s libEGL.so ${SNAPCRAFT_PRIME}/opt/vc/lib/libEGL.so.1 || true
+      ln -s libGLESv2.so ${SNAPCRAFT_PRIME}/opt/vc/lib/libGLESv2.so.2 || true
+      ln -s libwayland-egl.so ${SNAPCRAFT_PRIME}/opt/vc/lib/libwayland-egl.so.1 || true
