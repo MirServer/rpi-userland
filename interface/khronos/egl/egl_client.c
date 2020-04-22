@@ -218,8 +218,17 @@ Also affects global image (and possibly others?)
    -
 */
 
+#ifdef BUILD_WAYLAND
+void bcm_host_init();
+#endif
+
 EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
 {
+#ifdef BUILD_WAYLAND
+   /* This is pleasantly idempotent */
+   bcm_host_init();
+#endif
+
    CLIENT_THREAD_STATE_T *thread = CLIENT_GET_THREAD_STATE();
    EGLBoolean result;
 
