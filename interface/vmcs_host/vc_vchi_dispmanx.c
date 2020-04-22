@@ -122,6 +122,8 @@ static int32_t dispmanx_wait_for_reply(void *response, uint32_t max_length);
 
 static int32_t dispmanx_send_command(  uint32_t command, void *buffer, uint32_t length);
 
+static int32_t dispmanx_send_command_nolock( uint32_t command, void *buffer, uint32_t length );
+
 static int32_t dispmanx_send_command_reply(  uint32_t command, void *buffer, uint32_t length,
                                         void *response, uint32_t max_length);
 
@@ -384,20 +386,22 @@ VCHPRE_ int VCHPOST_ vc_dispmanx_resource_write_data( DISPMANX_RESOURCE_HANDLE_T
    uint8_t *host_start = (uint8_t *)src_address + src_pitch * rect->y;
    int32_t bulk_len = src_pitch * rect->height, success = 0;
 
+   // TODO!: This will instantly deadlock, as dismpanx_send_command *also* locks.
+   // TODO: Add a dismpanx_send_command_nolock() or something
+   lock_obtain();
    //Now send the bulk transfer across
-   //command parameters: resource handle, destination y, bulk length
+   //command parameters: resource handle, destination y, bulk leng`th
    uint32_t param[] = {VC_HTOV32(handle), VC_HTOV32(rect->y), VC_HTOV32(bulk_len), VC_HTOV32(src_type) };
-   success = dispmanx_send_command(  EDispmanBulkWrite | DISPMANX_NO_REPLY_MASK, param, sizeof(param));
+   success = dispmanx_send_command_nolock(  EDispmanBulkWrite | DISPMANX_NO_REPLY_MASK, param, sizeof(param));
    if(success == 0)
    {
-      lock_obtain();
       success = vchi_bulk_queue_transmit( dispmanx_client.client_handle[0],
                                           host_start,
                                           bulk_len,
                                           VCHI_FLAGS_BLOCK_UNTIL_DATA_READ,
                                           NULL );
-      lock_release();
    }
+   lock_release();
    return (int) success;
 }
 /***********************************************************
@@ -433,20 +437,20 @@ vc_dispmanx_resource_read_data(
    host_start = (uint8_t *)dst_address + (dst_pitch * p_rect->y);
    bulk_len   = (int32_t)dst_pitch * p_rect->height;
 
+   lock_obtain();
    // Now send the bulk transfer across
    // command parameters: resource handle, destination y, bulk length
    uint32_t param[] = { VC_HTOV32(handle), VC_HTOV32(p_rect->y), VC_HTOV32(bulk_len) };
-   success = dispmanx_send_command( EDispmanBulkRead | DISPMANX_NO_REPLY_MASK, param, sizeof(param));
+   success = dispmanx_send_command_nolock( EDispmanBulkRead | DISPMANX_NO_REPLY_MASK, param, sizeof(param));
    if (success == 0)
    {
-      lock_obtain();
       success = vchi_bulk_queue_receive(  dispmanx_client.client_handle[0],
                                           host_start,
                                           bulk_len,
-                                          VCHI_FLAGS_BLOCK_UNTIL_OP_COMPLETE,
+                                             VCHI_FLAGS_BLOCK_UNTIL_OP_COMPLETE,
                                           0 );
-      lock_release();
    }
+   lock_release();
    return (int) success;
 }
 
@@ -1203,6 +1207,23 @@ static int32_t dispmanx_send_command(  uint32_t command, void *buffer, uint32_t 
       response = success;
    }
    lock_release();
+   return VC_VTOH32(response);
+}
+
+static int32_t dispmanx_send_command_nolock(  uint32_t command, void *buffer, uint32_t length) {
+   VCHI_MSG_VECTOR_T vector[] = { {&command, sizeof(command)},
+                                  {buffer, length} };
+   int32_t success = 0, response = -1;
+   success = vchi_msg_queuev( dispmanx_client.client_handle[0],
+                              vector, sizeof(vector)/sizeof(vector[0]),
+                              VCHI_FLAGS_BLOCK_UNTIL_QUEUED, NULL );
+   if(success == 0 && !(command & DISPMANX_NO_REPLY_MASK)) {
+      //otherwise only wait for a reply if we ask for one
+      success = dispmanx_wait_for_reply(&response, sizeof(response));
+   } else {
+      //Not waiting for a reply, send the success code back instead
+      response = success;
+   }
    return VC_VTOH32(response);
 }
 
